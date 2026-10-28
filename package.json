@@ -1,0 +1,17 @@
+{
+  "name": "digital-clock-board",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node --watch index.js"
+  },
+  "keywords": [],
+  "author": "neisii",
+  "license": "MIT",
+  "type": "module",
+  "dependencies": {
+    "ink": "^8.0.0",
+    "react": "^19.3.1"
+  }
+}
