@@ -663,19 +663,13 @@ function Board() {
       backgroundColor: '#000000',
       flexDirection: 'column',
       alignItems: 'center',
-      paddingX: 0, // 상단도 padding이 아니라 아래 빈 Box들로 직접 띄운다 — 테두리와 내용 사이에
-      // padding이 만드는 빈 줄이 안 남게 한다.
+      paddingX: 0, // 테두리와 내용 사이에 padding이 만드는 빈 줄이 안 남게 한다.
     },
-    h(Box, { height: 1 }),
-    h(Box, { height: 1 }),
-    h(Box, { height: 1 }),
-    h(Box, { height: 1 }),
-    h(Box, { height: 1 }), // 문구를 테두리에서 다섯 줄 띄운다(세 줄에서 두 줄 더 내렸다).
     h(Text, { color: '#00FF66', bold: true }, "Y O U   G O T   T H I S"),
     // 왼쪽 산 바로 위 자리에 해/달을 띄운다. 이 줄도 산 줄과 똑같은 구조(산 폭 + 간격 +
     // 가운데 칸 + 간격 + 산 폭)로 맞춰야, 보드 전체가 가운데 정렬될 때 해/달이 산이 아니라
     // 보드 한복판으로 쏠리지 않는다 — 가운데 칸·오른쪽 산 자리는 빈 칸으로만 채운다.
-    // marginTop이 아니라 빈 Box(height:1)로 띄운다(위쪽 여백과 같은 방식으로 통일).
+    // marginTop이 아니라 빈 Box(height:1)로 띄운다.
     h(Box, { height: 1 }),
     h(
       Box,
