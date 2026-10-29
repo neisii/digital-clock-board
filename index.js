@@ -128,7 +128,7 @@ const CARPET_CHAR = '▒';
 // 산이 폭에 비해 탑처럼 길쭉해 보였다(실측 확인: 글꼴 줄간격은 process.stdout로 못 읽으므로
 // 코드가 자동으로 보정할 수 없다). 사용자 선택으로 높이를 줄이고, 그 대신 산이 잔디까지 안
 // 닿는 건(시계 옆에 떠 있는 것처럼 보이는 것) 다시 받아들이기로 했다.
-const MOUNTAIN_HEIGHT = 4;
+const MOUNTAIN_HEIGHT = 6;
 function computeMountainSideWidth(boardWidth) {
   return Math.max(0, Math.floor((boardWidth - CLOCK_WIDTH) / 2) - MOUNTAIN_GAP);
 }
@@ -190,8 +190,10 @@ function buildMountainRows(width) {
   // 중심을 충분히 떨어뜨려 두면(0.3W / 0.75W) 위쪽 줄에서는 두 봉우리가 떨어져 보이다가,
   // 바닥 줄에서야 폭이 넓어지며 서로 닿아 하나의 능선처럼 합쳐진다.
   const nearPeakRow = Math.round(MOUNTAIN_HEIGHT * 0.4);
-  const far = buildPeakRows(width, MOUNTAIN_HEIGHT, 0, Math.floor(width * 0.25), Math.floor(width * 0.3));
-  const near = buildPeakRows(width, MOUNTAIN_HEIGHT, nearPeakRow, Math.floor(width * 0.25), Math.floor(width * 0.75));
+  // 바닥 반폭을 0.45W로 넓혀서 양 끝(왼쪽 가장자리·오른쪽 발치)까지 산이 닿게 한다. 가장자리를 넘는 부분은
+  // buildPeakRows가 잘라 낸다.
+  const far = buildPeakRows(width, MOUNTAIN_HEIGHT, 0, Math.floor(width * 0.45), Math.floor(width * 0.3));
+  const near = buildPeakRows(width, MOUNTAIN_HEIGHT, nearPeakRow, Math.floor(width * 0.45), Math.floor(width * 0.75));
   return mergePeaks(far, near);
 }
 
@@ -205,6 +207,7 @@ function buildMountainRows(width) {
 // 그려져(실측 확인: 낮으로 바뀌면 이 줄만 한 칸 밀림), 처음부터 2칸인 '🌕'(U+1F315, 기본값이
 // "이모지 표시")와 실제 렌더 폭이 달랐다. 달과 같은 계열인 '🌞'(U+1F31E, 기본값도 이모지 표시)로
 // 바꿔서 둘 다 항상 2칸으로 그려지게 한다.
+const HOUSE_EMOJI = '🏠';
 const SUN_ROW = '🌞';
 const MOON_ROW = '🌕';
 
@@ -224,7 +227,9 @@ function centerText(text, width) {
 // 것처럼 보이는 자리에 놓는다.
 const OWL_EMOJI = '🦉';
 const OWL_VISUAL_WIDTH = 2;
-const OWL_PERCH_ROWS = Array.from({ length: Math.round(MOUNTAIN_HEIGHT * 0.4) }, (_, i) => i);
+// 능선 옆 빈 하늘에 떠 보이지 않도록 꼭대기 줄이 아니라 두 줄 아래부터 앉힌다.
+const OWL_PERCH_ROW_OFFSET = 2;
+const OWL_PERCH_ROWS = Array.from({ length: Math.round(MOUNTAIN_HEIGHT * 0.4) }, (_, i) => i + OWL_PERCH_ROW_OFFSET);
 const OWL_GAP_MIN_MS = 8000;
 const OWL_GAP_MAX_MS = 20000;
 const OWL_DURATION_MIN_MS = 4000;
@@ -244,6 +249,17 @@ function filledRangeOfRow(segments) {
   return { first, last };
 }
 
+// 그 줄의 x부터 width칸이 모두 비어 있는지(산이 안 칠해져 있는지). 아래 줄로 내려오면 near 봉우리와 겹칠 수 있다.
+function isRangeEmpty(segments, x, width) {
+  let pos = 0;
+  for (const seg of segments) {
+    const end = pos + seg.text.length;
+    if (seg.kind && x < end && x + width > pos) return false;
+    pos = end;
+  }
+  return true;
+}
+
 // 산 모양·폭이 리사이즈로 바뀔 수 있으므로 모듈 상수 대신 그 순간 값을 인자로 받는다.
 function pickOwlSpot(mountainLeftRows, mountainRightRows, mountainSideWidth) {
   const sides = [
@@ -258,8 +274,10 @@ function pickOwlSpot(mountainLeftRows, mountainRightRows, mountainSideWidth) {
       if (first === -1) continue; // 그 줄엔 산이 없다(폭이 너무 좁은 경우)
       const leftX = first - 1 - OWL_VISUAL_WIDTH;
       const rightX = last + 2;
-      if (leftX >= 0) candidates.push({ side, row, x: leftX });
-      if (rightX + OWL_VISUAL_WIDTH <= mountainSideWidth) candidates.push({ side, row, x: rightX });
+      if (leftX >= 0 && isRangeEmpty(rows[row], leftX, OWL_VISUAL_WIDTH)) candidates.push({ side, row, x: leftX });
+      if (rightX + OWL_VISUAL_WIDTH <= mountainSideWidth && isRangeEmpty(rows[row], rightX, OWL_VISUAL_WIDTH)) {
+        candidates.push({ side, row, x: rightX });
+      }
     }
   }
   if (candidates.length === 0) return null;
@@ -599,8 +617,10 @@ function Board() {
   const mountainSideWidth = useMemo(() => computeMountainSideWidth(boardWidth), [boardWidth]);
   // 산 모양 자체는 랜덤이 아니라 폭만으로 정해지는 결정론적 계산이라, boardWidth가 바뀔
   // 때 다시 만들어도(잔디처럼) 깜빡이지 않는다 — 같은 폭이면 항상 같은 모양이 나온다.
-  const mountainLeftRows = useMemo(() => buildMountainRows(mountainSideWidth), [mountainSideWidth]);
-  const mountainRightRows = useMemo(() => buildMountainRows(mountainSideWidth), [mountainSideWidth]);
+  // 시계 쪽 간격 칸(MOUNTAIN_GAP)까지 산이 이어지도록 산을 그 폭만큼 더 넓게 그린다(산이 없으면 0 그대로).
+  const mountainDrawWidth = mountainSideWidth > 0 ? mountainSideWidth + MOUNTAIN_GAP : 0;
+  const mountainLeftRows = useMemo(() => buildMountainRows(mountainDrawWidth), [mountainDrawWidth]);
+  const mountainRightRows = useMemo(() => buildMountainRows(mountainDrawWidth), [mountainDrawWidth]);
   // 잔디는 랜덤이라 boardWidth가 바뀔 때만 새로 뽑는다(매초 다시 뽑으면 깜빡인다, 기존 주석 참고).
   const topGrassLine = useMemo(() => buildGrassLine(boardWidth), [boardWidth]);
   const bottomGrassLine = useMemo(() => buildGrassLine(boardWidth), [boardWidth]);
@@ -612,7 +632,7 @@ function Board() {
   // 모양·폭이 바뀐 경우도 마찬가지).
   const mountainLeftRowsRef = useRef(mountainLeftRows);
   const mountainRightRowsRef = useRef(mountainRightRows);
-  const mountainSideWidthRef = useRef(mountainSideWidth);
+  const mountainSideWidthRef = useRef(mountainDrawWidth);
   useEffect(() => {
     isDaytimeRef.current = isDaytime;
     if (isDaytime) setOwlSpot(null); // 낮이 되면 보여주던 중이어도 바로 치운다
@@ -624,8 +644,8 @@ function Board() {
     mountainRightRowsRef.current = mountainRightRows;
   }, [mountainRightRows]);
   useEffect(() => {
-    mountainSideWidthRef.current = mountainSideWidth;
-  }, [mountainSideWidth]);
+    mountainSideWidthRef.current = mountainDrawWidth;
+  }, [mountainDrawWidth]);
 
   // sniff/조우 스케줄러와 같은 재귀 setTimeout 패턴. 타이머가 울릴 때 낮이면(또는 앉을 자리가
   // 없으면) 그냥 다음 타이머만 다시 건다 — 낮에는 아예 보여주지 않는다.
@@ -666,53 +686,51 @@ function Board() {
       paddingX: 0, // 테두리와 내용 사이에 padding이 만드는 빈 줄이 안 남게 한다.
     },
     h(Text, { color: '#00FF66', bold: true }, "Y O U   G O T   T H I S"),
-    // 왼쪽 산 바로 위 자리에 해/달을 띄운다. 이 줄도 산 줄과 똑같은 구조(산 폭 + 간격 +
-    // 가운데 칸 + 간격 + 산 폭)로 맞춰야, 보드 전체가 가운데 정렬될 때 해/달이 산이 아니라
-    // 보드 한복판으로 쏠리지 않는다 — 가운데 칸·오른쪽 산 자리는 빈 칸으로만 채운다.
-    // marginTop이 아니라 빈 Box(height:1)로 띄운다.
-    h(Box, { height: 1 }),
+    // 보드 높이는 그대로 두고 좌표만 옮긴다: 해/달 줄 + 본문 8줄(=9줄) 영역을 세 칸(왼쪽 산 · 가운데 · 오른쪽 산)
+    // 으로 나눠 각 칸 안에서 위쪽 빈 줄(spacer) 수로 위치를 정한다. 산은 영역 맨 아래(잔디 바로 위)에 붙고,
+    // 해/달은 왼쪽 산 바로 위, 시계는 위에서 2번째 줄부터(5줄), 날짜는 맨 아래에서 두 번째 줄이다.
     h(
       Box,
-      null,
-      h(Text, { color: '#00FF66', bold: true }, centerText(isDaytime ? SUN_ROW : MOON_ROW, mountainSideWidth)),
-      h(Box, { width: MOUNTAIN_GAP }),
-      h(Box, { width: CLOCK_WIDTH }),
-      h(Box, { width: MOUNTAIN_GAP }),
-      h(Box, { width: mountainSideWidth }),
-    ),
-    // 산(MOUNTAIN_HEIGHT=8줄)이 시계+빈줄+날짜+빈줄을 합친 높이와 똑같아야 잔디 바로 위까지
-    // 끊김 없이 이어진다 — 그래서 시계·날짜를 따로따로 marginTop로 떨어뜨리던 걸 그만두고,
-    // 가운데 칸(시계·빈줄·날짜·빈줄 8줄)과 양옆 산을 한 Box 안에 같이 넣어 높이를 맞춘다.
-    // 이 줄 위 여백도 marginTop이 아니라 빈 Box(height:1)로 띄운다.
-    h(Box, { height: 1 }),
-    h(
-      Box,
-      null,
+      { height: 1 + 8 },
       h(
         Box,
-        { position: 'relative' },
-        h(Mountain, { rows: mountainLeftRows, color: '#00FF66', farColor: '#045926' }),
-        owlSpot && owlSpot.side === 'left'
-          ? h(Box, { position: 'absolute', top: owlSpot.row, left: owlSpot.x }, h(Text, { bold: true }, OWL_EMOJI))
-          : null,
+        { flexDirection: 'column', width: mountainDrawWidth },
+        h(Box, { height: 8 - MOUNTAIN_HEIGHT }),
+        h(Text, { color: '#00FF66', bold: true }, centerText(isDaytime ? SUN_ROW : MOON_ROW, mountainSideWidth)),
+        h(
+          Box,
+          { position: 'relative' },
+          h(Mountain, { rows: mountainLeftRows, color: '#00FF66', farColor: '#045926' }),
+          // 왼쪽 산 오른쪽 발치(맨 아랫줄, 산 폭 오른쪽 끝에서 한 칸 밖으로 나온다)에 집 한 채. 올빼미가 앉는 윗줄과는 겹치지 않는다.
+          mountainSideWidth >= 2
+            ? h(Box, { position: 'absolute', top: MOUNTAIN_HEIGHT - 1, left: mountainSideWidth + 1 }, h(Text, null, HOUSE_EMOJI))
+            : null,
+          owlSpot && owlSpot.side === 'left'
+            ? h(Box, { position: 'absolute', top: owlSpot.row, left: owlSpot.x }, h(Text, { bold: true }, OWL_EMOJI))
+            : null,
+        ),
       ),
-      h(Box, { width: MOUNTAIN_GAP }),
       h(
         Box,
-        { flexDirection: 'column', alignItems: 'center' },
+        { flexDirection: 'column', alignItems: 'center', width: CLOCK_WIDTH },
+        h(Box, { height: 1 }),
         h(BigClock, { text: timeText, color: '#3B82F6' }),
         h(Box, { height: 1 }),
         h(Text, { color: '#00FF66', bold: true }, dateText),
         h(Box, { height: 1 }),
       ),
-      h(Box, { width: MOUNTAIN_GAP }),
       h(
         Box,
-        { position: 'relative' },
-        h(Mountain, { rows: mountainRightRows, color: '#00FF66', farColor: '#045926' }),
-        owlSpot && owlSpot.side === 'right'
-          ? h(Box, { position: 'absolute', top: owlSpot.row, left: owlSpot.x }, h(Text, { bold: true }, OWL_EMOJI))
-          : null,
+        { flexDirection: 'column', width: mountainDrawWidth },
+        h(Box, { height: 9 - MOUNTAIN_HEIGHT }),
+        h(
+          Box,
+          { position: 'relative' },
+          h(Mountain, { rows: mountainRightRows, color: '#00FF66', farColor: '#045926' }),
+          owlSpot && owlSpot.side === 'right'
+            ? h(Box, { position: 'absolute', top: owlSpot.row, left: owlSpot.x }, h(Text, { bold: true }, OWL_EMOJI))
+            : null,
+        ),
       ),
     ),
     h(
