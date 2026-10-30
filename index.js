@@ -207,9 +207,11 @@ function buildMountainRows(width) {
 // 그려져(실측 확인: 낮으로 바뀌면 이 줄만 한 칸 밀림), 처음부터 2칸인 '🌕'(U+1F315, 기본값이
 // "이모지 표시")와 실제 렌더 폭이 달랐다. 달과 같은 계열인 '🌞'(U+1F31E, 기본값도 이모지 표시)로
 // 바꿔서 둘 다 항상 2칸으로 그려지게 한다.
-const HOUSE_EMOJI = '🏠';
 const SUN_ROW = '🌞';
 const MOON_ROW = '🌕';
+const HOUSE_EMOJI = '🏠';
+const NIGHT_BACKGROUND = '#000000';
+const DAY_BACKGROUND = '#134E4A'; // 파란 시계·초록 글자와 대비가 남는 어두운 청록(낮 하늘 느낌).
 
 // text가 width보다 길면(산이 리사이즈로 아주 좁아져서 해/달 한 칸도 못 들어가는 경우) 그냥
 // 빈 줄을 돌려준다 — 안 자르고 그대로 내보내면 그 칸에 할당한 폭을 넘어서서, 같은 줄의
@@ -680,7 +682,7 @@ function Board() {
     {
       borderStyle: 'single', // 굵은 이중선(double) 대신 얇은 1px 테두리.
       borderColor: '#00FF66',
-      backgroundColor: '#000000',
+      backgroundColor: isDaytime ? DAY_BACKGROUND : NIGHT_BACKGROUND, // 낮(06~17시)에는 검정 대신 청록 톤.
       flexDirection: 'column',
       alignItems: 'center',
       paddingX: 0, // 테두리와 내용 사이에 padding이 만드는 빈 줄이 안 남게 한다.
