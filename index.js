@@ -211,6 +211,8 @@ const SUN_ROW = '🌞';
 const MOON_ROW = '🌕';
 const HOUSE_EMOJI = '🏠';
 const NIGHT_BACKGROUND = '#000000';
+const NIGHT_FAR_MOUNTAIN = '#045926';
+const DAY_FAR_MOUNTAIN = '#16A34A'; // 낮 청록 배경(#134E4A)에 묻히지 않도록 뒷산을 더 선명한 초록으로(앞산 #00FF66보다는 어둡게).
 const DAY_BACKGROUND = '#134E4A'; // 파란 시계·초록 글자와 대비가 남는 어두운 청록(낮 하늘 느낌).
 
 // text가 width보다 길면(산이 리사이즈로 아주 좁아져서 해/달 한 칸도 못 들어가는 경우) 그냥
@@ -702,7 +704,7 @@ function Board() {
         h(
           Box,
           { position: 'relative' },
-          h(Mountain, { rows: mountainLeftRows, color: '#00FF66', farColor: '#045926' }),
+          h(Mountain, { rows: mountainLeftRows, color: '#00FF66', farColor: isDaytime ? DAY_FAR_MOUNTAIN : NIGHT_FAR_MOUNTAIN }),
           // 왼쪽 산 오른쪽 발치(맨 아랫줄, 산 폭 오른쪽 끝에서 한 칸 밖으로 나온다)에 집 한 채. 올빼미가 앉는 윗줄과는 겹치지 않는다.
           mountainSideWidth >= 2
             ? h(Box, { position: 'absolute', top: MOUNTAIN_HEIGHT - 1, left: mountainSideWidth + 1 }, h(Text, null, HOUSE_EMOJI))
@@ -728,7 +730,7 @@ function Board() {
         h(
           Box,
           { position: 'relative' },
-          h(Mountain, { rows: mountainRightRows, color: '#00FF66', farColor: '#045926' }),
+          h(Mountain, { rows: mountainRightRows, color: '#00FF66', farColor: isDaytime ? DAY_FAR_MOUNTAIN : NIGHT_FAR_MOUNTAIN }),
           owlSpot && owlSpot.side === 'right'
             ? h(Box, { position: 'absolute', top: owlSpot.row, left: owlSpot.x }, h(Text, { bold: true }, OWL_EMOJI))
             : null,
